@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematical Formula Traffic Signal 3D Simulator & Dashboard</title>
+    <!-- Google Fonts: Plus Jakarta Sans, Outfit, JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fa-solid fa-cube"></i></div>
+            <div class="logo-text">
+                <h1>Mathematical Traffic <span>3D Signal Simulator</span></h1>
+                <p>Sequential Adaptive Control & Allotted Green Allocator with 3D Isometric Physics</p>
+            </div>
+        </div>
+        <div class="header-status">
+            <button class="theme-toggle-btn" id="btnThemeToggle" title="Toggle Light / Dark Mode"
+                aria-label="Toggle Theme">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+            <div class="fps-badge" id="statFpsBadge">
+                <i class="fa-solid fa-bolt"></i> <span id="stat-fps">60</span> FPS
+            </div>
+            <div class="status-badge live" id="simStatusBadge">
+                <span class="pulse-dot"></span> LIVE CALCULATION
+            </div>
+            <div class="time-display" id="simClock">00:00:00</div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-layout">
+
+        <!-- Left Column: Visual Simulator & Control Panel -->
+        <section class="left-panel">
+
+            <!-- 3D Intersection Visualizer Card -->
+            <div class="canvas-card card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-cubes"></i> 3D Isometric Crossroad Visualizer</h2>
+                    <div class="canvas-controls">
+                        <button class="btn btn-secondary btn-sm" id="btnPausePlay"><i class="fa-solid fa-pause"></i>
+                            Pause</button>
+                        <button class="btn btn-secondary btn-sm" id="btnReset"><i class="fa-solid fa-rotate-right"></i>
+                            Reset</button>
+                        <select id="speedSelect" class="select-sm">
+                            <option value="1">1x Speed</option>
+                            <option value="2">2x Speed</option>
+                            <option value="3.5">3.5x Speed</option>
+                            <option value="5">5x Speed</option>
+                        </select>
+                        <button class="btn btn-emergency btn-sm" id="btnEmergency"
+                            title="Spawn Emergency Ambulance in FCFS Queue">
+                            <i class="fa-solid fa-truck-medical"></i> <span>+ Ambulance</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Canvas Viewport Wrapper (Free-Movement Camera) -->
+                <div class="canvas-wrapper">
+                    <div id="scene-container"></div>
+
+                    <!-- Dynamic 3D Interactive Compass Widget -->
+                    <div class="compass-widget" id="compassWidget"
+                        title="Click to reset orientation to Isometric / North">
+                        <div class="compass-rose" id="compassRose">
+                            <div class="compass-cardinal compass-n">N</div>
+                            <div class="compass-cardinal compass-e">E</div>
+                            <div class="compass-cardinal compass-s">S</div>
+                            <div class="compass-cardinal compass-w">W</div>
+                            <div class="compass-needle"></div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamically Projected Signal & Direction Indicator Badges -->
+                    <div class="light-badge" id="badgeNorth">NORTH: 30s GREEN</div>
+                    <div class="light-badge" id="badgeSouth">SOUTH: RED</div>
+                    <div class="light-badge" id="badgeEast">EAST: RED</div>
+                    <div class="light-badge" id="badgeWest">WEST: RED</div>
+
+                    <!-- Emergency Priority Banner (Overlay) -->
+                    <div id="emergency-banner" class="emergency-banner" style="display: none;">
+                        <span class="pulse-dot red"></span>
+                        <span id="emergency-banner-text">🚨 EMERGENCY PREEMPTION: Priority Green given to Ambulance ➔
+                            Hospital ER!</span>
+                    </div>
+
+                    <!-- Selected Vehicle HUD Card (Overlay) -->
+                    <div id="vehicle-card" class="vehicle-hud-card" style="display: none;">
+                        <div class="hud-header">
+                            <span class="hud-title" id="vc-type">Vehicle Selected</span>
+                            <button class="hud-close" id="btn-close-hud"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="hud-grid">
+                            <div class="hud-item"><span>Approach:</span> <strong id="vc-approach">NB</strong></div>
+                            <div class="hud-item"><span>Lane:</span> <strong id="vc-lane">Lane 1</strong></div>
+                            <div class="hud-item"><span>Speed:</span> <strong id="vc-speed">0 km/h</strong></div>
+                            <div class="hud-item"><span>Status:</span> <strong id="vc-action">Moving</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- OrbitControls Free-Movement Hint -->
+                    <div class="controls-hint">
+                        <span><i class="fa-solid fa-mouse"></i> Left-drag to rotate | Right-drag to pan | Scroll to zoom
+                            | Click vehicle for details</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Directional Flow Controls Card (Inward & Outward for Each Side) -->
+            <div class="controls-card card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-sliders"></i> Inward (Arrival) Flow Controls Per Side</h2>
+                </div>
+                <div class="inflow-panel">
+                    <div class="sliders-grid">
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-to-bracket"></i> North
+                                    Inward (NB):</span> <strong id="valInflowN">15 veh/min</strong></div>
+                            <input type="range" id="sliderInflowN" min="0" max="60" value="15">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-to-bracket"></i> East
+                                    Inward (EB):</span> <strong id="valInflowE">15 veh/min</strong></div>
+                            <input type="range" id="sliderInflowE" min="0" max="60" value="15">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-to-bracket"></i> South
+                                    Inward (SB):</span> <strong id="valInflowS">15 veh/min</strong></div>
+                            <input type="range" id="sliderInflowS" min="0" max="60" value="15">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-to-bracket"></i> West
+                                    Inward (WB):</span> <strong id="valInflowW">15 veh/min</strong></div>
+                            <input type="range" id="sliderInflowW" min="0" max="60" value="15">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header border-top">
+                    <h2><i class="fa-solid fa-arrow-right-from-bracket"></i> Outward (Discharge Rate) Controls Per Side
+                    </h2>
+                </div>
+                <div class="inflow-panel">
+                    <div class="sliders-grid">
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-from-bracket"></i> North
+                                    Outward:</span> <strong id="valOutflowN">20 veh/min</strong></div>
+                            <input type="range" id="sliderOutflowN" min="5" max="50" value="20">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-from-bracket"></i> East
+                                    Outward:</span> <strong id="valOutflowE">20 veh/min</strong></div>
+                            <input type="range" id="sliderOutflowE" min="5" max="50" value="20">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-from-bracket"></i> South
+                                    Outward:</span> <strong id="valOutflowS">20 veh/min</strong></div>
+                            <input type="range" id="sliderOutflowS" min="5" max="50" value="20">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span><i class="fa-solid fa-arrow-right-from-bracket"></i> West
+                                    Outward:</span> <strong id="valOutflowW">20 veh/min</strong></div>
+                            <input type="range" id="sliderOutflowW" min="5" max="50" value="20">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header border-top">
+                    <h2><i class="fa-solid fa-gears"></i> Formula Parameters (α, γ, gmin)</h2>
+                </div>
+                <div class="formula-panel">
+                    <div class="sliders-grid">
+                        <div class="slider-item">
+                            <div class="slider-label"><span>Alpha (Queue Weight α):</span> <strong
+                                    id="valAlpha">1.0</strong></div>
+                            <input type="range" id="sliderAlpha" min="0.1" max="3.0" step="0.1" value="1.0">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span>Gamma (Flow Ratio Weight γ):</span> <strong
+                                    id="valGamma">1.5</strong></div>
+                            <input type="range" id="sliderGamma" min="0.1" max="3.0" step="0.1" value="1.5">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label"><span>Min Green (gmin):</span> <strong id="valGmin">20s</strong>
+                            </div>
+                            <input type="range" id="sliderGmin" min="10" max="60" step="5" value="20">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Allotted Green Allocations & Dashboard Analytics -->
+        <section class="right-panel">
+
+            <!-- Allotted Green Duration Card For Each Side -->
+            <div class="gauge-card card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-stopwatch"></i> Allotted Green Duration Per Side (N -> E -> S -> W)</h2>
+                    <span class="pill-badge highlight" id="pillActiveTurn">ACTIVE TURN: NORTH (20s)</span>
+                </div>
+                <div class="gauge-body">
+
+                    <!-- 4-Side Allotted Green Grid with Live Vehicle Counters -->
+                    <div class="directional-greens-grid">
+                        <div class="green-alloc-card active" id="cardAllocN">
+                            <div class="alloc-card-header">
+                                <span class="alloc-title">NORTH (NB)</span>
+                                <span class="alloc-veh-badge" id="vehBadgeN"><i class="fa-solid fa-car"></i> <strong
+                                        id="valVehN">0</strong></span>
+                            </div>
+                            <h3 class="alloc-value" id="allocGNorth">20 <small>sec</small></h3>
+                            <span class="alloc-status" id="statusN">ACTIVE GREEN</span>
+                            <span class="alloc-subdetail" id="subdetailN">Q: 0 | Wt: 0</span>
+                        </div>
+                        <div class="green-alloc-card" id="cardAllocE">
+                            <div class="alloc-card-header">
+                                <span class="alloc-title">EAST (EB)</span>
+                                <span class="alloc-veh-badge" id="vehBadgeE"><i class="fa-solid fa-car"></i> <strong
+                                        id="valVehE">0</strong></span>
+                            </div>
+                            <h3 class="alloc-value" id="allocGEast">20 <small>sec</small></h3>
+                            <span class="alloc-status" id="statusE">PRE-CALCULATED</span>
+                            <span class="alloc-subdetail" id="subdetailE">Q: 0 | Wt: 0</span>
+                        </div>
+                        <div class="green-alloc-card" id="cardAllocS">
+                            <div class="alloc-card-header">
+                                <span class="alloc-title">SOUTH (SB)</span>
+                                <span class="alloc-veh-badge" id="vehBadgeS"><i class="fa-solid fa-car"></i> <strong
+                                        id="valVehS">0</strong></span>
+                            </div>
+                            <h3 class="alloc-value" id="allocGSouth">20 <small>sec</small></h3>
+                            <span class="alloc-status" id="statusS">PRE-CALCULATED</span>
+                            <span class="alloc-subdetail" id="subdetailS">Q: 0 | Wt: 0</span>
+                        </div>
+                        <div class="green-alloc-card" id="cardAllocW">
+                            <div class="alloc-card-header">
+                                <span class="alloc-title">WEST (WB)</span>
+                                <span class="alloc-veh-badge" id="vehBadgeW"><i class="fa-solid fa-car"></i> <strong
+                                        id="valVehW">0</strong></span>
+                            </div>
+                            <h3 class="alloc-value" id="allocGWest">20 <small>sec</small></h3>
+                            <span class="alloc-status" id="statusW">PRE-CALCULATED</span>
+                            <span class="alloc-subdetail" id="subdetailW">Q: 0 | Wt: 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Formula Box -->
+                    <div class="formula-box">
+                        $$G_{\text{side}} = \text{clamp}\left(g_{\text{min}} + l_{\text{side}} + \left[\alpha \cdot
+                        \left(\frac{Q_{\text{side}}}{s_{\text{discharge}}}\right) \cdot \left(1 + \gamma \cdot
+                        \frac{\lambda_{\text{in}}}{s_{\text{out}}}\right)\right], \; g_{\text{min}}, \;
+                        g_{\text{max}}\right)$$
+                    </div>
+
+                    <!-- Next Side Formula Parameters Breakdown -->
+                    <div class="decision-comparison">
+                        <div class="decision-item">
+                            <span>Upcoming Side:</span>
+                            <strong id="nextDirName">EAST (EB)</strong>
+                        </div>
+                        <div class="decision-item">
+                            <span>Inward / Outward:</span>
+                            <strong id="calcInOut">15 / 20 v/m</strong>
+                        </div>
+                        <div class="decision-item">
+                            <span>Next Queue (Q_next):</span>
+                            <strong id="calcQ">0 vehs</strong>
+                        </div>
+                        <div class="decision-item">
+                            <span>Clearance Load (l_next):</span>
+                            <strong id="calcL">0.00</strong>
+                        </div>
+                        <div class="decision-item">
+                            <span>Flow Ratio (r_next):</span>
+                            <strong id="calcR">0.75</strong>
+                        </div>
+                        <div class="decision-item highlight">
+                            <span>Allotted Green (G_next):</span>
+                            <strong id="calcG">20s</strong>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="phaseProgressBar" style="width: 0%;"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="txtPhaseActive">Current Active Phase: NORTH GREEN</span>
+                        <span id="txtPhaseRemaining">Time Remaining: 20s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Metrics Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon blue"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-title">Avg Waiting Time</span>
+                        <h3 class="metric-value" id="kpiAvgWait">0.0 <small>s</small></h3>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon amber"><i class="fa-solid fa-car-side"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-title">Total Active Vehicles</span>
+                        <h3 class="metric-value" id="kpiQueue">0 <small>vehs</small></h3>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-title">Served Vehicles</span>
+                        <h3 class="metric-value" id="kpiThroughput">0</h3>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon purple"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-title">Average Speed</span>
+                        <h3 class="metric-value" id="kpiSpeed">0.0 <small>km/h</small></h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Trend Charts -->
+            <div class="charts-card card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-area"></i> Live Performance Analytics</h2>
+                    <div class="chart-toggle">
+                        <button class="btn btn-sm btn-secondary active" id="btnShowWaitChart">Waiting Time</button>
+                        <button class="btn btn-sm btn-secondary" id="btnShowQueueChart">Directional Queues</button>
+                        <button class="btn btn-sm btn-secondary" id="btnShowGChart">Allotted Green G</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="liveChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MathJax rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- App Module -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
